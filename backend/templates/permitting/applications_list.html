@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Permit Applications - CiviAI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-list me-2"></i>
+                Permit Applications
+            </h2>
+            <a href="{% url 'property_lookup' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                New Application
+            </a>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Filter by Status</label>
+                        <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                            <option value="">All Statuses</option>
+                            {% for value, display in status_choices %}
+                            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                                {{ display }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               placeholder="Applicant name, address..." value="{{ request.GET.search }}">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                        <a href="{% url 'applications_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Applications Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    Applications 
+                    {% if page_obj.paginator.count %}
+                        ({{ page_obj.paginator.count }} total)
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% if page_obj.object_list %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Application ID</th>
+                                <th>Property</th>
+                                <th>Permit Type</th>
+                                <th>Applicant</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Fee</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in page_obj.object_list %}
+                            <tr>
+                                <td>
+                                    <code>{{ application.application_id|slice:":8" }}...</code>
+                                </td>
+                                <td>
+                                    <strong>{{ application.property.address }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ application.property.get_zoning_display }}</small>
+                                </td>
+                                <td>
+                                    {{ application.permit_type.name }}
+                                    <br>
+                                    <small class="text-muted">{{ application.permit_type.code }}</small>
+                                </td>
+                                <td>
+                                    {{ application.applicant_name }}
+                                    <br>
+                                    <small class="text-muted">{{ application.applicant_email }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if application.status == 'APPROVED' %}success{% elif application.status == 'DENIED' %}danger{% elif application.status == 'UNDER_REVIEW' %}warning{% elif application.status == 'SUBMITTED' %}info{% else %}secondary{% endif %}">
+                                        {{ application.get_status_display }}
+                                    </span>
+                                    {% if application.compliance_check_passed %}
+                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Compliant</small>
+                                    {% elif application.compliance_issues %}
+                                    <br><small class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Issues</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if application.submitted_at %}
+                                        {{ application.submitted_at|date:"M d, Y" }}
+                                        <br>
+                                        <small class="text-muted">{{ application.submitted_at|timesince }} ago</small>
+                                    {% else %}
+                                        <span class="text-muted">Draft</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if application.calculated_fee %}
+                                        ${{ application.calculated_fee|floatformat:2 }}
+                                        <br>
+                                        {% if application.fee_paid %}
+                                            <small class="text-success"><i class="fas fa-check-circle me-1"></i>Paid</small>
+                                        {% else %}
+                                            <small class="text-warning"><i class="fas fa-clock me-1"></i>Pending</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'application_detail' application.application_id %}" 
+                                           class="btn btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if application.status == 'DRAFT' %}
+                                        <a href="{% url 'permit_wizard' application.property.id %}" 
+                                           class="btn btn-outline-secondary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No applications found</h5>
+                    <p class="text-muted">
+                        {% if current_status %}
+                            No applications with status "{{ current_status|title }}" found.
+                        {% else %}
+                            No permit applications have been submitted yet.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'property_lookup' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>
+                        Create First Application
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Applications pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if current_status %}&status={{ current_status }}{% endif %}">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if current_status %}&status={{ current_status }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if current_status %}&status={{ current_status }}{% endif %}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ page_obj.paginator.count }}</h3>
+                <small class="text-muted">Total Applications</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">
+                    {% with submitted_count=page_obj.object_list|length %}
+                    {{ submitted_count }}
+                    {% endwith %}
+                </h3>
+                <small class="text-muted">This Page</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-warning">-</h3>
+                <small class="text-muted">Under Review</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">-</h3>
+                <small class="text-muted">Approved</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-submit search form on Enter
+document.getElementById('search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        this.form.submit();
+    }
+});
+
+// Refresh page every 30 seconds for real-time updates
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}
+

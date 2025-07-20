@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+{% block title %}Application {{ application.application_id|slice:":8" }} - CiviAI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Application Header -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>
+                    Application #{{ application.application_id|slice:":8" }}...
+                </h2>
+                <span class="badge bg-{% if application.status == 'APPROVED' %}success{% elif application.status == 'DENIED' %}danger{% elif application.status == 'UNDER_REVIEW' %}warning{% else %}secondary{% endif %} fs-6">
+                    {{ application.get_status_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>{{ application.permit_type.name }}</h5>
+                        <p class="text-muted">{{ application.permit_type.description }}</p>
+                        
+                        <p class="mb-1"><strong>Property:</strong> {{ application.property.address }}</p>
+                        <p class="mb-1"><strong>Tax Lot:</strong> {{ application.property.tax_lot_number }}</p>
+                        <p class="mb-1"><strong>Zoning:</strong> {{ application.property.get_zoning_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Applicant:</strong> {{ application.applicant_name }}</p>
+                        <p class="mb-1"><strong>Email:</strong> {{ application.applicant_email }}</p>
+                        {% if application.applicant_phone %}
+                        <p class="mb-1"><strong>Phone:</strong> {{ application.applicant_phone }}</p>
+                        {% endif %}
+                        
+                        <p class="mb-1"><strong>Submitted:</strong> 
+                            {% if application.submitted_at %}
+                                {{ application.submitted_at|date:"M d, Y" }}
+                            {% else %}
+                                <span class="text-muted">Draft</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Details -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Project Details
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        {% if application.project_value %}
+                        <p class="mb-1"><strong>Project Value:</strong> ${{ application.project_value|floatformat:2 }}</p>
+                        {% endif %}
+                        {% if application.square_footage %}
+                        <p class="mb-1"><strong>Square Footage:</strong> {{ application.square_footage|floatformat:0 }} sq ft</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if application.calculated_fee %}
+                        <p class="mb-1"><strong>Calculated Fee:</strong> ${{ application.calculated_fee|floatformat:2 }}</p>
+                        <p class="mb-1"><strong>Fee Status:</strong> 
+                            {% if application.fee_paid %}
+                                <span class="text-success"><i class="fas fa-check-circle me-1"></i>Paid</span>
+                            {% else %}
+                                <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                            {% endif %}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if application.project_description %}
+                <div class="mb-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ application.project_description }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Compliance Check Results -->
+        {% if compliance_checks %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Compliance Check Results
+                </h4>
+            </div>
+            <div class="card-body">
+                {% for check in compliance_checks %}
+                <div class="d-flex align-items-start mb-3">
+                    <div class="me-3">
+                        {% if check.result == 'PASS' %}
+                            <i class="fas fa-check-circle text-success fa-lg"></i>
+                        {% elif check.result == 'FAIL' %}
+                            <i class="fas fa-times-circle text-danger fa-lg"></i>
+                        {% elif check.result == 'WARNING' %}
+                            <i class="fas fa-exclamation-triangle text-warning fa-lg"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle text-muted fa-lg"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{ check.rule_checked.rule_description }}</h6>
+                        <p class="mb-1">{{ check.details }}</p>
+                        {% if check.suggested_action %}
+                        <small class="text-muted">
+                            <strong>Suggested Action:</strong> {{ check.suggested_action }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Documents -->
+        {% if documents %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-paperclip me-2"></i>
+                    Submitted Documents
+                </h4>
+            </div>
+            <div class="card-body">
+                {% for document in documents %}
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div>
+                        <i class="fas fa-file-pdf me-2 text-danger"></i>
+                        <strong>{{ document.get_document_type_display }}</strong>
+                        <br>
+                        <small class="text-muted">{{ document.filename }} ({{ document.file_size|filesizeformat }})</small>
+                    </div>
+                    <div>
+                        <a href="{{ document.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="fas fa-download me-1"></i>Download
+                        </a>
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Review Notes -->
+        {% if application.review_notes %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>
+                    Review Notes
+                </h4>
+            </div>
+            <div class="card-body">
+                <p>{{ application.review_notes|linebreaks }}</p>
+                {% if application.reviewed_by %}
+                <small class="text-muted">
+                    Reviewed by {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}
+                    {% if application.review_completed_at %}
+                        on {{ application.review_completed_at|date:"M d, Y" }}
+                    {% endif %}
+                </small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Property Information -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Property Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Address:</strong> {{ application.property.address }}</p>
+                <p class="mb-1"><strong>Tax Lot:</strong> {{ application.property.tax_lot_number }}</p>
+                <p class="mb-1"><strong>Zoning:</strong> {{ application.property.get_zoning_display }}</p>
+                <p class="mb-1"><strong>Size:</strong> {{ application.property.acres|floatformat:2 }} acres</p>
+                
+                {% if application.property.floodplain_overlay %}
+                <div class="alert alert-warning mt-2 mb-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <small><strong>Floodplain Overlay</strong></small>
+                </div>
+                {% endif %}
+                
+                {% if application.property.riparian_overlay %}
+                <div class="alert alert-info mt-2 mb-2">
+                    <i class="fas fa-water me-1"></i>
+                    <small><strong>Riparian Buffer</strong></small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Application Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Application Timeline
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <i class="fas fa-plus-circle text-primary"></i>
+                        <div class="timeline-content">
+                            <strong>Application Created</strong>
+                            <br>
+                            <small class="text-muted">{{ application.created_at|date:"M d, Y g:i A" }}</small>
+                        </div>
+                    </div>
+                    
+                    {% if application.submitted_at %}
+                    <div class="timeline-item">
+                        <i class="fas fa-paper-plane text-info"></i>
+                        <div class="timeline-content">
+                            <strong>Application Submitted</strong>
+                            <br>
+                            <small class="text-muted">{{ application.submitted_at|date:"M d, Y g:i A" }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if application.review_completed_at %}
+                    <div class="timeline-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div class="timeline-content">
+                            <strong>Review Completed</strong>
+                            <br>
+                            <small class="text-muted">{{ application.review_completed_at|date:"M d, Y g:i A" }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'applications_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-1"></i>
+                        View All Applications
+                    </a>
+                    
+                    {% if application.status == 'DRAFT' %}
+                    <a href="{% url 'permit_wizard' application.property.id %}" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i>
+                        Continue Editing
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'property_lookup' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-plus me-1"></i>
+                        New Application
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-phone me-2"></i>
+                    Need Help?
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1 small">
+                    <i class="fas fa-phone me-1"></i> (541) 878-2225
+                </p>
+                <p class="mb-0 small">
+                    <i class="fas fa-envelope me-1"></i> planning@shadycove.org
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-item i {
+    position: absolute;
+    left: -2rem;
+    top: 0.25rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -1.25rem;
+    top: 1.5rem;
+    width: 2px;
+    height: calc(100% + 0.5rem);
+    background-color: #dee2e6;
+}
+
+.timeline-content {
+    margin-left: 0.5rem;
+}
+</style>
+{% endblock %}
+

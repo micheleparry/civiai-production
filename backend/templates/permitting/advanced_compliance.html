@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+
+{% block title %}Advanced Compliance Checker - CiviAI{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3><i class="fas fa-shield-alt"></i> Advanced Compliance Checker</h3>
+                    <p class="mb-0">Comprehensive compliance analysis with AI-powered insights</p>
+                </div>
+                <div class="card-body">
+                    <!-- Compliance Level Selection -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5>Select Compliance Level</h5>
+                            <div class="btn-group" role="group" aria-label="Compliance Level">
+                                <input type="radio" class="btn-check" name="compliance_level" id="basic" value="BASIC">
+                                <label class="btn btn-outline-secondary" for="basic">Basic Zoning</label>
+                                
+                                <input type="radio" class="btn-check" name="compliance_level" id="standard" value="STANDARD">
+                                <label class="btn btn-outline-info" for="standard">Standard Codes</label>
+                                
+                                <input type="radio" class="btn-check" name="compliance_level" id="comprehensive" value="COMPREHENSIVE" checked>
+                                <label class="btn btn-outline-warning" for="comprehensive">Comprehensive</label>
+                                
+                                <input type="radio" class="btn-check" name="compliance_level" id="expert" value="EXPERT">
+                                <label class="btn btn-outline-success" for="expert">AI Expert</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                <strong>Basic:</strong> Zoning compliance only | 
+                                <strong>Standard:</strong> + Building codes | 
+                                <strong>Comprehensive:</strong> + State goals | 
+                                <strong>Expert:</strong> + Claude AI analysis
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Property Selection -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="property_search" class="form-label">Property Address or Tax Lot</label>
+                            <input type="text" class="form-control" id="property_search" placeholder="Enter address or tax lot number">
+                            <div id="property_results" class="mt-2"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="permit_type" class="form-label">Permit Type</label>
+                            <select class="form-select" id="permit_type">
+                                <option value="">Select permit type...</option>
+                                <option value="1">Single Family Residence</option>
+                                <option value="2">Residential Addition</option>
+                                <option value="3">Deck/Patio</option>
+                                <option value="4">Accessory Dwelling Unit</option>
+                                <option value="5">Commercial Building</option>
+                                <option value="6">Industrial Facility</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Project Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5>Project Details</h5>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="square_footage" class="form-label">Square Footage</label>
+                            <input type="number" class="form-control" id="square_footage" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="building_height" class="form-label">Building Height (ft)</label>
+                            <input type="number" class="form-control" id="building_height" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="front_setback" class="form-label">Front Setback (ft)</label>
+                            <input type="number" class="form-control" id="front_setback" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="parking_spaces" class="form-label">Parking Spaces</label>
+                            <input type="number" class="form-control" id="parking_spaces" placeholder="0">
+                        </div>
+                    </div>
+
+                    <!-- Additional Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label for="project_description" class="form-label">Project Description</label>
+                            <textarea class="form-control" id="project_description" rows="3" placeholder="Describe the proposed project..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <button type="button" class="btn btn-primary btn-lg" id="run_compliance_check">
+                                <i class="fas fa-search"></i> Run Compliance Check
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="clear_form">
+                                <i class="fas fa-eraser"></i> Clear Form
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="compliance_results" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-line"></i> Compliance Analysis Results</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="results_content">
+                                    <!-- Results will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="loading_indicator" class="text-center mt-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Running compliance analysis...</p>
+                        <small class="text-muted">This may take a few moments for comprehensive analysis</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedPropertyId = null;
+
+    // Property search functionality
+    document.getElementById('property_search').addEventListener('input', function() {
+        const query = this.value;
+        if (query.length > 2) {
+            searchProperties(query);
+        }
+    });
+
+    // Run compliance check
+    document.getElementById('run_compliance_check').addEventListener('click', function() {
+        runComplianceCheck();
+    });
+
+    // Clear form
+    document.getElementById('clear_form').addEventListener('click', function() {
+        clearForm();
+    });
+
+    function searchProperties(query) {
+        fetch('/api/search-properties/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayPropertyResults(data.properties || []);
+        })
+        .catch(error => {
+            console.error('Error searching properties:', error);
+        });
+    }
+
+    function displayPropertyResults(properties) {
+        const resultsDiv = document.getElementById('property_results');
+        if (properties.length === 0) {
+            resultsDiv.innerHTML = '<small class="text-muted">No properties found</small>';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        properties.forEach(property => {
+            html += `
+                <a href="#" class="list-group-item list-group-item-action property-option" 
+                   data-property-id="${property.id}">
+                    <strong>${property.address}</strong><br>
+                    <small>Tax Lot: ${property.tax_lot_number} | Zoning: ${property.zoning}</small>
+                </a>
+            `;
+        });
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+
+        // Add click handlers for property selection
+        document.querySelectorAll('.property-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectedPropertyId = this.dataset.propertyId;
+                document.getElementById('property_search').value = this.querySelector('strong').textContent;
+                resultsDiv.innerHTML = '';
+            });
+        });
+    }
+
+    function runComplianceCheck() {
+        if (!selectedPropertyId) {
+            alert('Please select a property first');
+            return;
+        }
+
+        const permitTypeId = document.getElementById('permit_type').value;
+        if (!permitTypeId) {
+            alert('Please select a permit type');
+            return;
+        }
+
+        const complianceLevel = document.querySelector('input[name="compliance_level"]:checked').value;
+        
+        const projectDetails = {
+            square_footage: parseInt(document.getElementById('square_footage').value) || 0,
+            building_height: parseFloat(document.getElementById('building_height').value) || 0,
+            front_setback: parseFloat(document.getElementById('front_setback').value) || 0,
+            parking_spaces: parseInt(document.getElementById('parking_spaces').value) || 0,
+            project_description: document.getElementById('project_description').value
+        };
+
+        // Show loading indicator
+        document.getElementById('loading_indicator').style.display = 'block';
+        document.getElementById('compliance_results').style.display = 'none';
+
+        // Make API call
+        fetch('/api/advanced-compliance-check/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                property_id: selectedPropertyId,
+                permit_type_id: permitTypeId,
+                project_details: projectDetails,
+                compliance_level: complianceLevel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loading_indicator').style.display = 'none';
+            displayComplianceResults(data);
+        })
+        .catch(error => {
+            document.getElementById('loading_indicator').style.display = 'none';
+            console.error('Error running compliance check:', error);
+            alert('Error running compliance check. Please try again.');
+        });
+    }
+
+    function displayComplianceResults(data) {
+        const resultsDiv = document.getElementById('results_content');
+        
+        if (!data.success) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${data.error}
+                </div>
+            `;
+            document.getElementById('compliance_results').style.display = 'block';
+            return;
+        }
+
+        const results = data.compliance_results;
+        let html = '';
+
+        // Overall Status
+        const statusClass = getStatusClass(results.overall_status);
+        html += `
+            <div class="alert ${statusClass}">
+                <h5><i class="fas fa-info-circle"></i> Overall Status: ${results.overall_status}</h5>
+                <p>Compliance Level: ${results.compliance_level}</p>
+                <p>Checks Performed: ${results.checks_performed.join(', ')}</p>
+            </div>
+        `;
+
+        // Summary
+        if (results.summary) {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-chart-bar"></i> Compliance Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        ${formatSummary(results.summary)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Detailed Results
+        if (results.basic_zoning) {
+            html += formatZoningResults(results.basic_zoning);
+        }
+
+        if (results.standard_compliance) {
+            html += formatStandardResults(results.standard_compliance);
+        }
+
+        if (results.statewide_compliance) {
+            html += formatStatewideResults(results.statewide_compliance);
+        }
+
+        if (results.expert_analysis) {
+            html += formatExpertResults(results.expert_analysis);
+        }
+
+        // Recommendations
+        if (results.recommendations && results.recommendations.length > 0) {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-lightbulb"></i> Recommendations</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            ${results.recommendations.map(rec => `<li class="list-group-item">${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        resultsDiv.innerHTML = html;
+        document.getElementById('compliance_results').style.display = 'block';
+    }
+
+    function getStatusClass(status) {
+        switch(status) {
+            case 'APPROVED': return 'alert-success';
+            case 'APPROVED_WITH_CONDITIONS': return 'alert-warning';
+            case 'NEEDS_REVIEW': return 'alert-info';
+            case 'DENIED': return 'alert-danger';
+            default: return 'alert-secondary';
+        }
+    }
+
+    function formatSummary(summary) {
+        let html = '<div class="row">';
+        
+        Object.keys(summary).forEach(key => {
+            const value = summary[key];
+            const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            html += `
+                <div class="col-md-4 mb-2">
+                    <strong>${displayKey}:</strong> ${value}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+
+    function formatZoningResults(zoning) {
+        if (!zoning.success) return '';
+        
+        let html = `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-map"></i> Zoning Compliance (${zoning.zoning_district})</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Compliance Rate:</strong> ${zoning.compliance_rate.toFixed(1)}%</p>
+                    <p><strong>Violations:</strong> ${zoning.violations}</p>
+        `;
+        
+        if (zoning.detailed_checks && zoning.detailed_checks.length > 0) {
+            html += '<h6>Detailed Checks:</h6><ul class="list-group list-group-flush">';
+            zoning.detailed_checks.forEach(check => {
+                const iconClass = check.compliant ? 'text-success fas fa-check' : 'text-danger fas fa-times';
+                html += `
+                    <li class="list-group-item">
+                        <i class="${iconClass}"></i> ${check.message}
+                    </li>
+                `;
+            });
+            html += '</ul>';
+        }
+        
+        html += '</div></div>';
+        return html;
+    }
+
+    function formatStandardResults(standard) {
+        if (!standard.success) return '';
+        
+        let html = `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-building"></i> Standard Code Compliance</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Categories:</strong> ${standard.categories_checked.join(', ')}</p>
+                    <p><strong>Compliance Rate:</strong> ${standard.compliance_rate.toFixed(1)}%</p>
+                    <p><strong>Violations:</strong> ${standard.violations}</p>
+        `;
+        
+        if (standard.detailed_checks && standard.detailed_checks.length > 0) {
+            html += '<h6>Detailed Checks:</h6><ul class="list-group list-group-flush">';
+            standard.detailed_checks.forEach(check => {
+                const iconClass = check.compliant ? 'text-success fas fa-check' : 'text-danger fas fa-times';
+                html += `
+                    <li class="list-group-item">
+                        <i class="${iconClass}"></i> ${check.message}
+                    </li>
+                `;
+            });
+            html += '</ul>';
+        }
+        
+        html += '</div></div>';
+        return html;
+    }
+
+    function formatStatewideResults(statewide) {
+        if (!statewide.success) return '';
+        
+        let html = `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-flag"></i> Oregon Statewide Planning Goals</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Source:</strong> ${statewide.source}</p>
+        `;
+        
+        if (statewide.mcp_analysis) {
+            const mcp = statewide.mcp_analysis;
+            if (mcp.summary) {
+                html += `
+                    <p><strong>Goals Checked:</strong> ${mcp.summary.total_goals_checked || 'N/A'}</p>
+                    <p><strong>Overall Status:</strong> ${mcp.summary.overall_status || 'N/A'}</p>
+                `;
+            }
+        }
+        
+        if (statewide.claude_analysis) {
+            html += `
+                <div class="mt-3">
+                    <h6>AI Analysis:</h6>
+                    <div class="border p-3 bg-light">
+                        ${statewide.claude_analysis}
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div></div>';
+        return html;
+    }
+
+    function formatExpertResults(expert) {
+        if (!expert.success) return '';
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-brain"></i> AI Expert Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Model:</strong> ${expert.model}</p>
+                    <div class="mt-3">
+                        <div class="border p-3 bg-light">
+                            ${expert.expert_analysis.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function clearForm() {
+        document.getElementById('property_search').value = '';
+        document.getElementById('permit_type').value = '';
+        document.getElementById('square_footage').value = '';
+        document.getElementById('building_height').value = '';
+        document.getElementById('front_setback').value = '';
+        document.getElementById('parking_spaces').value = '';
+        document.getElementById('project_description').value = '';
+        document.getElementById('property_results').innerHTML = '';
+        document.getElementById('compliance_results').style.display = 'none';
+        selectedPropertyId = null;
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}
+

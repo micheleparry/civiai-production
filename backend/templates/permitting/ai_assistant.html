@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Assistant - CiviAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        AI Co-Planner Assistant
+                    </h4>
+                    <small>Ask me anything about planning, zoning, permits, or procedures</small>
+                </div>
+                <div class="card-body">
+                    <!-- Chat Interface -->
+                    <div id="chat-container" style="height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; background-color: #f8f9fa;">
+                        <div class="chat-message assistant-message">
+                            <div class="message-content">
+                                <strong>AI Assistant:</strong> Hello! I'm your AI Co-Planner. I can help you with:
+                                <ul class="mt-2">
+                                    <li>Zoning requirements and regulations</li>
+                                    <li>Permit types and application processes</li>
+                                    <li>Fee calculations and requirements</li>
+                                    <li>Review timelines and procedures</li>
+                                    <li>Special requirements (floodplain, riparian, etc.)</li>
+                                </ul>
+                                What would you like to know?
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question Input -->
+                    <div class="input-group">
+                        <input type="text" id="question-input" class="form-control" 
+                               placeholder="Type your planning question here..." 
+                               onkeypress="handleKeyPress(event)">
+                        <button class="btn btn-primary" onclick="askQuestion()">
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                    
+                    <!-- Loading indicator -->
+                    <div id="loading" class="text-center mt-3" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-2">Thinking...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefinedQuestion('What permits are required for a deck?')">
+                            Deck Permit Requirements
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefinedQuestion('What are the setback requirements for R-1 zoning?')">
+                            R-1 Setback Requirements
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefinedQuestion('How long does permit review take?')">
+                            Review Timelines
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefinedQuestion('What fees apply to residential additions?')">
+                            Fee Information
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="askPredefinedQuestion('What are floodplain requirements?')">
+                            Floodplain Rules
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Property Context -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Property Context</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="property-search" class="form-label">Search Property</label>
+                        <input type="text" id="property-search" class="form-control" 
+                               placeholder="Address or tax lot number">
+                        <button class="btn btn-sm btn-outline-secondary mt-2" onclick="searchProperty()">
+                            Set Context
+                        </button>
+                    </div>
+                    
+                    <div id="current-property" style="display: none;">
+                        <h6>Current Property:</h6>
+                        <div id="property-info" class="small text-muted"></div>
+                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="clearProperty()">
+                            Clear Context
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.user-message {
+    background-color: #e3f2fd;
+    margin-left: 20px;
+}
+
+.assistant-message {
+    background-color: #f1f8e9;
+    margin-right: 20px;
+}
+
+.message-content {
+    line-height: 1.5;
+}
+
+.timestamp {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 5px;
+}
+</style>
+
+<script>
+let currentPropertyId = null;
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        askQuestion();
+    }
+}
+
+function askQuestion() {
+    const questionInput = document.getElementById('question-input');
+    const question = questionInput.value.trim();
+    
+    if (!question) return;
+    
+    // Add user message to chat
+    addMessageToChat('user', question);
+    
+    // Clear input and show loading
+    questionInput.value = '';
+    showLoading(true);
+    
+    // Prepare request data
+    const requestData = {
+        question: question
+    };
+    
+    if (currentPropertyId) {
+        requestData.property_id = currentPropertyId;
+    }
+    
+    // Make API request
+    fetch('/api/ask-question/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        showLoading(false);
+        if (data.error) {
+            addMessageToChat('assistant', 'Sorry, I encountered an error: ' + data.error);
+        } else {
+            addMessageToChat('assistant', data.answer);
+        }
+    })
+    .catch(error => {
+        showLoading(false);
+        addMessageToChat('assistant', 'Sorry, I encountered a technical error. Please try again.');
+        console.error('Error:', error);
+    });
+}
+
+function askPredefinedQuestion(question) {
+    document.getElementById('question-input').value = question;
+    askQuestion();
+}
+
+function addMessageToChat(sender, message) {
+    const chatContainer = document.getElementById('chat-container');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${sender}-message`;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const senderLabel = sender === 'user' ? 'You' : 'AI Assistant';
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            <strong>${senderLabel}:</strong> ${message}
+            <div class="timestamp">${timestamp}</div>
+        </div>
+    `;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+}
+
+function searchProperty() {
+    const searchInput = document.getElementById('property-search');
+    const query = searchInput.value.trim();
+    
+    if (!query) return;
+    
+    fetch(`/api/search-properties/?q=${encodeURIComponent(query)}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error searching properties: ' + data.error);
+        } else if (data.results.length === 0) {
+            alert('No properties found matching your search.');
+        } else {
+            // Use first result
+            const property = data.results[0];
+            setPropertyContext(property);
+        }
+    })
+    .catch(error => {
+        alert('Error searching properties.');
+        console.error('Error:', error);
+    });
+}
+
+function setPropertyContext(property) {
+    currentPropertyId = property.id;
+    
+    document.getElementById('property-info').innerHTML = `
+        <strong>${property.address}</strong><br>
+        Tax Lot: ${property.tax_lot_number}<br>
+        Zoning: ${property.zoning}<br>
+        Size: ${property.size_acres} acres
+    `;
+    
+    document.getElementById('current-property').style.display = 'block';
+    document.getElementById('property-search').value = '';
+    
+    addMessageToChat('assistant', `Property context set to ${property.address}. I can now provide property-specific answers.`);
+}
+
+function clearProperty() {
+    currentPropertyId = null;
+    document.getElementById('current-property').style.display = 'none';
+    addMessageToChat('assistant', 'Property context cleared. I\'ll now provide general answers.');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

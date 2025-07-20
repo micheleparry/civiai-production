@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}CiviAI - Shady Cove Planning Department{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Welcome Section -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-city me-2"></i>
+                    Welcome to CiviAI - Shady Cove Planning Department
+                </h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    Your intelligent assistant for planning and permitting in {{ city_name }}, Oregon.
+                </p>
+                <p>
+                    CiviAI streamlines the permit application process using artificial intelligence to guide you through 
+                    requirements, check compliance in real-time, and ensure your project meets all local codes and regulations.
+                </p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{% url 'property_lookup' %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Apply for a Permit
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{% url 'applications_list' %}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-search me-2"></i>
+                                Check Application Status
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>
+                    How CiviAI Works
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-map-marker-alt fa-3x text-primary"></i>
+                        </div>
+                        <h5>1. Find Your Property</h5>
+                        <p>Enter your address or tax lot number to get started. Our system will instantly load your property's zoning and requirements.</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-clipboard-list fa-3x text-primary"></i>
+                        </div>
+                        <h5>2. Guided Application</h5>
+                        <p>Answer simple questions about your project. Our AI will guide you to the right forms and requirements.</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle fa-3x text-primary"></i>
+                        </div>
+                        <h5>3. Instant Compliance Check</h5>
+                        <p>Get real-time feedback on code compliance. Fix issues before submitting to speed up approval.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Department Statistics
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h3 class="text-primary">{{ total_properties }}</h3>
+                        <small class="text-muted">Properties</small>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-success">{{ active_applications }}</h3>
+                        <small class="text-muted">Active Applications</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Permit Types -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>
+                    Available Permits
+                </h4>
+            </div>
+            <div class="card-body">
+                {% for permit_type in permit_types %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ permit_type.name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ permit_type.description|truncatewords:10 }}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-primary">${{ permit_type.base_fee }}</span>
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% empty %}
+                <p class="text-muted">No permit types configured yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-phone me-2"></i>
+                    Need Help?
+                </h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Planning Department</strong></p>
+                <p class="mb-1">
+                    <i class="fas fa-phone me-2"></i>
+                    (541) 878-2225
+                </p>
+                <p class="mb-1">
+                    <i class="fas fa-envelope me-2"></i>
+                    planning@shadycove.org
+                </p>
+                <p class="mb-1">
+                    <i class="fas fa-clock me-2"></i>
+                    Mon-Fri: 8:00 AM - 5:00 PM
+                </p>
+                
+                <hr>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>New to permitting?</strong> Our AI assistant will guide you through every step of the process.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-star me-2"></i>
+                    CiviAI Features
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                        <h6>AI-Powered Guidance</h6>
+                        <small class="text-muted">Intelligent assistance throughout the application process</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-map fa-2x text-primary mb-2"></i>
+                        <h6>GIS Integration</h6>
+                        <small class="text-muted">Automatic property data lookup with zoning and overlays</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                        <h6>Code Compliance</h6>
+                        <small class="text-muted">Real-time checking against local building and zoning codes</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <i class="fas fa-clock fa-2x text-primary mb-2"></i>
+                        <h6>Faster Processing</h6>
+                        <small class="text-muted">Reduced review times through automated pre-screening</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

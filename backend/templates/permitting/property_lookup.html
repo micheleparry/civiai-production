@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Property Lookup - CiviAI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Find Your Property
+                </h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    Let's start by finding your property in our system. This will help us provide accurate zoning information and requirements.
+                </p>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="address" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    Property Address
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="address" 
+                                       name="address" 
+                                       placeholder="123 Main Street, Shady Cove, OR"
+                                       autocomplete="street-address">
+                                <div class="form-text">Enter the full street address of your property</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tax_lot" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>
+                                    Tax Lot Number
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="tax_lot" 
+                                       name="tax_lot" 
+                                       placeholder="36-4W-33-1000">
+                                <div class="form-text">Alternative: Enter your tax lot number if known</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Tip:</strong> You can find your tax lot number on your property tax statement or by searching the Jackson County Assessor's website.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-search me-2"></i>
+                            Find Property
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Can't Find Your Property?
+                </h4>
+            </div>
+            <div class="card-body">
+                <p>If your property doesn't appear in our system, it may be:</p>
+                <ul>
+                    <li>A new subdivision that hasn't been added yet</li>
+                    <li>Located outside Shady Cove city limits</li>
+                    <li>Listed under a different address format</li>
+                </ul>
+                
+                <p class="mb-0">
+                    <strong>Need assistance?</strong> Contact our planning department at 
+                    <a href="tel:5418782225">(541) 878-2225</a> or 
+                    <a href="mailto:planning@shadycove.org">planning@shadycove.org</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- What Happens Next -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-arrow-right me-2"></i>
+                    What Happens Next?
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-2">
+                            <i class="fas fa-map fa-2x text-primary"></i>
+                        </div>
+                        <h6>Property Information</h6>
+                        <small class="text-muted">We'll display your property's zoning, overlays, and any special requirements</small>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-2">
+                            <i class="fas fa-clipboard-list fa-2x text-primary"></i>
+                        </div>
+                        <h6>Project Details</h6>
+                        <small class="text-muted">Tell us about your project and we'll guide you to the right permits</small>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle fa-2x text-primary"></i>
+                        </div>
+                        <h6>Instant Feedback</h6>
+                        <small class="text-muted">Get real-time compliance checking and fee calculations</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus on the address field
+    document.getElementById('address').focus();
+    
+    // Clear the other field when user starts typing in one
+    const addressField = document.getElementById('address');
+    const taxLotField = document.getElementById('tax_lot');
+    
+    addressField.addEventListener('input', function() {
+        if (this.value.length > 0) {
+            taxLotField.value = '';
+        }
+    });
+    
+    taxLotField.addEventListener('input', function() {
+        if (this.value.length > 0) {
+            addressField.value = '';
+        }
+    });
+});
+</script>
+{% endblock %}
+

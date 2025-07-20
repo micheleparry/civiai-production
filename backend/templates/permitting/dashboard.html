@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+
+{% block title %}City Manager Dashboard - CiviAI{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 2rem;
+    }
+    .goal-progress {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .progress-bar-custom {
+        height: 8px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-chart-line me-2"></i>
+                City Manager Dashboard
+            </h2>
+            <div class="text-muted">
+                <i class="fas fa-clock me-1"></i>
+                Last updated: <span id="last-updated">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Performance Indicators -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="total-fees">$0</div>
+            <div>Monthly Fees Collected</div>
+            <small class="opacity-75">Last 30 days</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="total-permits">0</div>
+            <div>Permits Processed</div>
+            <small class="opacity-75">This month</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="avg-review-time">0</div>
+            <div>Avg Review Time</div>
+            <small class="opacity-75">Days</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-number" id="compliance-rate">0%</div>
+            <div>Auto-Approval Rate</div>
+            <small class="opacity-75">AI compliance passed</small>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Permit Types Breakdown
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="permitTypesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Application Status Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Strategic Goals Alignment -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bullseye me-2"></i>
+                    Comprehensive Plan Goal Alignment
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="goal-progress">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Goal 5: Open Spaces & Recreation</strong>
+                                <span class="badge bg-success">2 Projects</span>
+                            </div>
+                            <div class="progress progress-bar-custom">
+                                <div class="progress-bar bg-success" style="width: 40%"></div>
+                            </div>
+                            <small class="text-muted">Projects contributing to public access and recreation</small>
+                        </div>
+                        
+                        <div class="goal-progress">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Goal 9: Economic Development</strong>
+                                <span class="badge bg-primary">3 Projects</span>
+                            </div>
+                            <div class="progress progress-bar-custom">
+                                <div class="progress-bar bg-primary" style="width: 60%"></div>
+                            </div>
+                            <small class="text-muted">Commercial permits supporting economic growth</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="goal-progress">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Goal 10: Housing</strong>
+                                <span class="badge bg-info">5 Projects</span>
+                            </div>
+                            <div class="progress progress-bar-custom">
+                                <div class="progress-bar bg-info" style="width: 75%"></div>
+                            </div>
+                            <small class="text-muted">Residential permits addressing housing needs</small>
+                        </div>
+                        
+                        <div class="goal-progress">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Transportation Plan Alignment</strong>
+                                <span class="badge bg-warning">1 Project</span>
+                            </div>
+                            <div class="progress progress-bar-custom">
+                                <div class="progress-bar bg-warning" style="width: 25%"></div>
+                            </div>
+                            <small class="text-muted">Projects supporting transportation improvements</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Performance -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    Department Performance Metrics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Processing Efficiency</h6>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Applications Processed</span>
+                                <span class="text-success">↑ 15%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Average Review Time</span>
+                                <span class="text-success">↓ 25%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-info" style="width: 75%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Quality Metrics</h6>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>First-Time Approval Rate</span>
+                                <span class="text-success">92%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: 92%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Customer Satisfaction</span>
+                                <span class="text-success">4.8/5</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" style="width: 96%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-dollar-sign me-2"></i>
+                    Budget Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="stat-number text-primary">78%</div>
+                    <div>Budget Utilized</div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Personnel</span>
+                        <span>$45,000</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: 75%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Technology</span>
+                        <span>$8,500</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" style="width: 85%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Operations</span>
+                        <span>$3,200</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-warning" style="width: 65%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Activity</th>
+                                <th>Application</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-activity">
+                            <tr>
+                                <td>2 hours ago</td>
+                                <td>Application submitted</td>
+                                <td>Deck permit - 123 Main St</td>
+                                <td><span class="badge bg-info">Submitted</span></td>
+                            </tr>
+                            <tr>
+                                <td>4 hours ago</td>
+                                <td>Compliance check passed</td>
+                                <td>Addition - 456 River Rd</td>
+                                <td><span class="badge bg-success">Auto-approved</span></td>
+                            </tr>
+                            <tr>
+                                <td>1 day ago</td>
+                                <td>Fee payment received</td>
+                                <td>Fence permit - 789 Oak St</td>
+                                <td><span class="badge bg-success">Paid</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load dashboard data
+async function loadDashboardData() {
+    try {
+        const response = await fetch('{% url "dashboard_stats_api" %}');
+        const data = await response.json();
+        
+        // Update KPIs
+        document.getElementById('total-fees').textContent = '$' + data.monthly_fees.toLocaleString();
+        document.getElementById('total-permits').textContent = data.basic_stats.approved_this_month;
+        document.getElementById('avg-review-time').textContent = '8.5'; // Sample data
+        
+        const complianceRate = data.compliance_stats.auto_approved / 
+                              (data.compliance_stats.auto_approved + data.compliance_stats.needs_review) * 100;
+        document.getElementById('compliance-rate').textContent = Math.round(complianceRate) + '%';
+        
+        // Update timestamp
+        document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        
+        // Create charts
+        createPermitTypesChart(data.permit_breakdown);
+        createStatusChart(data.basic_stats);
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+
+function createPermitTypesChart(data) {
+    const ctx = document.getElementById('permitTypesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(item => item.permit_type__name),
+            datasets: [{
+                data: data.map(item => item.count),
+                backgroundColor: [
+                    '#2c5530', '#4a7c59', '#7fb069', '#d4f1d4', '#a8e6a3'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createStatusChart(data) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Total', 'Active', 'Approved'],
+            datasets: [{
+                label: 'Applications',
+                data: [data.total_applications, data.active_applications, data.approved_this_month],
+                backgroundColor: ['#2c5530', '#ffc107', '#28a745']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+// Refresh data every 5 minutes
+setInterval(loadDashboardData, 300000);
+</script>
+{% endblock %}
+

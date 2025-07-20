@@ -1,0 +1,515 @@
+{% extends 'base.html' %}
+
+{% block title %}Permit Wizard - {{ property.address }} - CiviAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wizard-step {
+        display: none;
+    }
+    .wizard-step.active {
+        display: block;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+    .step-indicator .step {
+        flex: 1;
+        text-align: center;
+        padding: 1rem;
+        background-color: #e9ecef;
+        border-radius: 0.5rem;
+        margin: 0 0.25rem;
+        position: relative;
+    }
+    .step-indicator .step.active {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    .step-indicator .step.completed {
+        background-color: var(--accent-color);
+        color: white;
+    }
+    .compliance-result {
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .compliance-pass {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .compliance-fail {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .compliance-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+    .fee-calculator {
+        background-color: var(--light-green);
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step-1-indicator">
+                <i class="fas fa-info-circle"></i><br>
+                <small>Property Info</small>
+            </div>
+            <div class="step" id="step-2-indicator">
+                <i class="fas fa-clipboard-list"></i><br>
+                <small>Project Details</small>
+            </div>
+            <div class="step" id="step-3-indicator">
+                <i class="fas fa-check-circle"></i><br>
+                <small>Review & Submit</small>
+            </div>
+        </div>
+
+        <!-- Wizard Form -->
+        <form method="post" id="permit-wizard-form">
+            {% csrf_token %}
+            
+            <!-- Step 1: Property Information -->
+            <div class="wizard-step active" id="step-1">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            Property Information
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="property-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>{{ property.address }}</h5>
+                                    <p class="mb-1"><strong>Tax Lot:</strong> {{ property.tax_lot_number }}</p>
+                                    <p class="mb-1"><strong>Zoning:</strong> {{ property.get_zoning_display }}</p>
+                                    <p class="mb-1"><strong>Size:</strong> {{ property.acres|floatformat:2 }} acres</p>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if property.floodplain_overlay %}
+                                    <div class="alert alert-warning mb-2">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        <strong>Floodplain Overlay</strong><br>
+                                        Special requirements may apply
+                                    </div>
+                                    {% endif %}
+                                    {% if property.riparian_overlay %}
+                                    <div class="alert alert-info mb-2">
+                                        <i class="fas fa-water me-1"></i>
+                                        <strong>Riparian Buffer</strong><br>
+                                        Development restrictions near water
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if property.easements %}
+                            <div class="mt-2">
+                                <strong>Known Easements:</strong>
+                                <p class="mb-0">{{ property.easements }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary" onclick="nextStep(2)">
+                                Continue <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Project Details -->
+            <div class="wizard-step" id="step-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Project Details
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Permit Type Selection -->
+                        <div class="mb-4">
+                            <label for="permit_type" class="form-label">
+                                <strong>What type of project are you planning?</strong>
+                            </label>
+                            <select class="form-select" id="permit_type" name="permit_type" required onchange="updatePermitInfo()">
+                                <option value="">Select a permit type...</option>
+                                {% for permit_type in permit_types %}
+                                <option value="{{ permit_type.id }}" 
+                                        data-base-fee="{{ permit_type.base_fee }}"
+                                        data-sq-ft-fee="{{ permit_type.per_square_foot_fee }}"
+                                        data-description="{{ permit_type.description }}">
+                                    {{ permit_type.name }} - ${{ permit_type.base_fee }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div id="permit-description" class="form-text"></div>
+                        </div>
+
+                        <!-- Applicant Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="applicant_name" class="form-label">Your Name *</label>
+                                <input type="text" class="form-control" id="applicant_name" name="applicant_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="applicant_email" class="form-label">Email Address *</label>
+                                <input type="email" class="form-control" id="applicant_email" name="applicant_email" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="applicant_phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="applicant_phone" name="applicant_phone">
+                            </div>
+                        </div>
+
+                        <!-- Project Details -->
+                        <div class="mb-4">
+                            <label for="project_description" class="form-label">Project Description *</label>
+                            <textarea class="form-control" id="project_description" name="project_description" rows="3" 
+                                      placeholder="Describe your project in detail..." required></textarea>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="project_value" class="form-label">Estimated Project Value</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="project_value" name="project_value" 
+                                           min="0" step="0.01" onchange="calculateFee()">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="square_footage" class="form-label">Square Footage</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="square_footage" name="square_footage" 
+                                           min="0" step="0.01" onchange="calculateFee()">
+                                    <span class="input-group-text">sq ft</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fee Calculator -->
+                        <div class="fee-calculator" id="fee-calculator" style="display: none;">
+                            <h5><i class="fas fa-calculator me-2"></i>Estimated Fees</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1">Base Fee: <span id="base-fee">$0.00</span></p>
+                                    <p class="mb-1">Additional Fees: <span id="additional-fees">$0.00</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Total Estimated Fee: <span id="total-fee" class="text-primary">$0.00</span></h6>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary" onclick="previousStep(1)">
+                                <i class="fas fa-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="runComplianceCheck()">
+                                Check Compliance <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Review & Submit -->
+            <div class="wizard-step" id="step-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Compliance Check & Review
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Compliance Results -->
+                        <div id="compliance-results" class="mb-4">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Checking compliance...</span>
+                                </div>
+                                <p class="mt-2">Running compliance check...</p>
+                            </div>
+                        </div>
+
+                        <!-- Application Summary -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Application Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Property:</strong> <span id="summary-address">{{ property.address }}</span></p>
+                                        <p><strong>Permit Type:</strong> <span id="summary-permit-type"></span></p>
+                                        <p><strong>Applicant:</strong> <span id="summary-applicant"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Project Value:</strong> <span id="summary-value"></span></p>
+                                        <p><strong>Square Footage:</strong> <span id="summary-sqft"></span></p>
+                                        <p><strong>Estimated Fee:</strong> <span id="summary-fee"></span></p>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <p><strong>Project Description:</strong></p>
+                                    <p id="summary-description" class="text-muted"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary" onclick="previousStep(2)">
+                                <i class="fas fa-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg" id="submit-application">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Submit Application
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Zoning Rules -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-ruler-combined me-2"></i>
+                    Zoning Requirements
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for rule in zoning_rules %}
+                <div class="mb-3">
+                    <h6>{{ rule.rule_description }}</h6>
+                    <div class="small text-muted">
+                        {% for key, value in rule.rule_parameters.items %}
+                            <span class="badge bg-light text-dark me-1">{{ key|title }}: {{ value }}{% if 'percentage' in rule.rule_type %}%{% elif 'feet' in rule.rule_type or 'setback' in rule.rule_type %} ft{% endif %}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Help & Resources -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Need Help?
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="small">
+                    Our AI assistant will guide you through the process, but if you have questions:
+                </p>
+                <p class="mb-1 small">
+                    <i class="fas fa-phone me-1"></i> (541) 878-2225
+                </p>
+                <p class="mb-0 small">
+                    <i class="fas fa-envelope me-1"></i> planning@shadycove.org
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentStep = 1;
+
+function nextStep(step) {
+    // Hide current step
+    document.getElementById(`step-${currentStep}`).classList.remove('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.remove('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.add('completed');
+    
+    // Show next step
+    currentStep = step;
+    document.getElementById(`step-${currentStep}`).classList.add('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+}
+
+function previousStep(step) {
+    // Hide current step
+    document.getElementById(`step-${currentStep}`).classList.remove('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.remove('active');
+    
+    // Show previous step
+    currentStep = step;
+    document.getElementById(`step-${currentStep}`).classList.add('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+    document.getElementById(`step-${currentStep}-indicator`).classList.remove('completed');
+}
+
+function updatePermitInfo() {
+    const select = document.getElementById('permit_type');
+    const option = select.options[select.selectedIndex];
+    const description = document.getElementById('permit-description');
+    
+    if (option.value) {
+        description.textContent = option.dataset.description;
+        calculateFee();
+    } else {
+        description.textContent = '';
+        document.getElementById('fee-calculator').style.display = 'none';
+    }
+}
+
+function calculateFee() {
+    const permitSelect = document.getElementById('permit_type');
+    const projectValue = parseFloat(document.getElementById('project_value').value) || 0;
+    const squareFootage = parseFloat(document.getElementById('square_footage').value) || 0;
+    
+    if (!permitSelect.value) return;
+    
+    const option = permitSelect.options[permitSelect.selectedIndex];
+    const baseFee = parseFloat(option.dataset.baseFee) || 0;
+    const sqFtFee = parseFloat(option.dataset.sqFtFee) || 0;
+    
+    const additionalFees = squareFootage * sqFtFee;
+    const totalFee = baseFee + additionalFees;
+    
+    document.getElementById('base-fee').textContent = `$${baseFee.toFixed(2)}`;
+    document.getElementById('additional-fees').textContent = `$${additionalFees.toFixed(2)}`;
+    document.getElementById('total-fee').textContent = `$${totalFee.toFixed(2)}`;
+    document.getElementById('fee-calculator').style.display = 'block';
+}
+
+function runComplianceCheck() {
+    // Update summary
+    updateSummary();
+    
+    // Move to step 3
+    nextStep(3);
+    
+    // Run compliance check via API
+    const data = {
+        property_id: {{ property.id }},
+        permit_type_id: document.getElementById('permit_type').value,
+        project_data: {
+            // This would include setbacks, height, etc. from form
+            // For now, we'll use sample data
+            setbacks: {
+                front: 15,
+                rear: 8,
+                side: 5
+            }
+        }
+    };
+    
+    fetch('{% url "compliance_check_api" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayComplianceResults(data);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('compliance-results').innerHTML = 
+            '<div class="alert alert-danger">Error checking compliance. Please try again.</div>';
+    });
+}
+
+function displayComplianceResults(data) {
+    const resultsDiv = document.getElementById('compliance-results');
+    let html = '<h5>Compliance Check Results</h5>';
+    
+    // Overall status
+    if (data.overall_status === 'PASS') {
+        html += '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>All requirements met! Your application is ready to submit.</div>';
+    } else {
+        html += '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Some issues found. Please review below.</div>';
+    }
+    
+    // Individual compliance results
+    data.compliance_results.forEach(result => {
+        let cssClass = 'compliance-pass';
+        let icon = 'fas fa-check-circle';
+        
+        if (result.status === 'FAIL') {
+            cssClass = 'compliance-fail';
+            icon = 'fas fa-times-circle';
+        } else if (result.status === 'WARNING') {
+            cssClass = 'compliance-warning';
+            icon = 'fas fa-exclamation-triangle';
+        }
+        
+        html += `
+            <div class="compliance-result ${cssClass}">
+                <i class="${icon} me-2"></i>
+                <strong>${result.rule_description}</strong><br>
+                ${result.message}
+                ${result.details ? `<br><small>${result.details}</small>` : ''}
+            </div>
+        `;
+    });
+    
+    // Overlay checks
+    if (data.overlay_checks && data.overlay_checks.length > 0) {
+        html += '<h6 class="mt-3">Special Requirements</h6>';
+        data.overlay_checks.forEach(check => {
+            html += `
+                <div class="compliance-result compliance-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>${check.rule_description}</strong><br>
+                    ${check.message}
+                    ${check.details ? `<br><small>${check.details}</small>` : ''}
+                </div>
+            `;
+        });
+    }
+    
+    resultsDiv.innerHTML = html;
+}
+
+function updateSummary() {
+    const permitSelect = document.getElementById('permit_type');
+    const permitText = permitSelect.options[permitSelect.selectedIndex].text;
+    
+    document.getElementById('summary-permit-type').textContent = permitText;
+    document.getElementById('summary-applicant').textContent = document.getElementById('applicant_name').value;
+    document.getElementById('summary-value').textContent = '$' + (document.getElementById('project_value').value || '0');
+    document.getElementById('summary-sqft').textContent = (document.getElementById('square_footage').value || '0') + ' sq ft';
+    document.getElementById('summary-fee').textContent = document.getElementById('total-fee').textContent;
+    document.getElementById('summary-description').textContent = document.getElementById('project_description').value;
+}
+</script>
+{% endblock %}
+
