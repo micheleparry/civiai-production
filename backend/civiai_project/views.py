@@ -41,6 +41,9 @@ def root_view(request):
     Root endpoint for the CivAI application.
     Returns basic application information.
     """
+    # Add debug logging
+    print("DEBUG: root_view function called!")
+    
     try:
         app_data = {
             "name": "CivAI",
@@ -57,9 +60,11 @@ def root_view(request):
             }
         }
         
+        print("DEBUG: Returning app_data:", app_data)
         return JsonResponse(app_data, status=200)
     
     except Exception as e:
+        print("DEBUG: Error in root_view:", str(e))
         error_data = {
             "error": "Application error",
             "message": str(e),
