@@ -3,8 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn civiai_project.wsgi:application --bind 0.0.0.0:$PORT",
-    "healthcheckPath": "/admin/"
+    "startCommand": "gunicorn civiai_project.wsgi:application --bind 0.0.0.0:$PORT",
+    "healthcheckPath": "/health/"
   }
 }
-
